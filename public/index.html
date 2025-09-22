@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" class="lg:text-base text-4xl">
+    <head>
+        <meta charset="UTF-8" />
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        <title>P-Stream Stremio Addon(s)</title>
+    </head>
+    <body
+        class="bg-slate-900 text-white flex items-center justify-center w-screen h-screen"
+    >
+        <div
+            class="min-w-96 rounded-3xl bg-slate-800 border-slate-600 border-2 flex flex-col p-6 text-xl gap-4"
+        >
+            <div class="text-center">
+                <p class="text-3xl">Log in to add addons</p>
+                <p class="text-sm text-gray-400">
+                    don't worry,
+                    <a
+                        class="text-[revert] underline"
+                        href="https://github.com/hyperkiko/pstremio/blob/main/public/index.html"
+                        >this is client side.</a
+                    >
+                </p>
+            </div>
+            <input
+                type="text"
+                name="email"
+                id="email"
+                class="border-2 border-slate-600 rounded-xl h-12 p-2"
+                placeholder="E-mail"
+            />
+            <input
+                type="password"
+                name="password"
+                id="password"
+                class="border-2 border-slate-600 rounded-xl h-12 p-2"
+                placeholder="Password"
+            />
+            <button
+                class="bg-slate-900 h-12 p-2 border-2 border-slate-600 rounded-xl cursor-pointer"
+                id="button"
+            >
+                Add/Sync Addons
+            </button>
+        </div>
+        <script type="module">
+            const sources = await fetch("/api/sources").then((resp) =>
+                resp.json()
+            );
+            /**
+             * @param {string} method
+             * @param {any} params
+             * @returns {Promise<any>}
+             */
+            const request = (method, params) =>
+                fetch(`https://api.strem.io/api/${method}`, {
+                    method: "POST",
+                    headers: {
+                        "content-type": "application/json"
+                    },
+                    body: JSON.stringify(params)
+                })
+                    .then((resp) => resp.json())
+                    .then((body) => body.result);
+
+            /** @type HTMLInputElement */
+            const email_input = document.getElementById("email");
+            /** @type HTMLInputElement */
+            const password_input = document.getElementById("password");
+            /** @type HTMLButtonElement */
+            const button = document.getElementById("button");
+            button.onclick = async (e) => {
+                const email = email_input.value;
+                const password = password_input.value;
+                if (!email || !password)
+                    return alert("enter login credentials");
+
+                const authKey = (await request("login", { email, password }))
+                    .authKey;
+
+                const addons = (
+                    await request("addonCollectionGet", {
+                        authKey,
+                        update: true
+                    })
+                ).addons.filter(
+                    (addon) =>
+                        !addon.transportUrl.startsWith(location.href) ||
+                        !addon.manifest.id.startsWith("fyi.kiko.pstremio.") ||
+                        sources.includes(
+                            addon.manifest.id.slice("fyi.kiko.pstremio.".length)
+                        )
+                );
+
+                const existing = addons
+                    .filter(
+                        (addon) =>
+                            addon.transportUrl.startsWith(location.href) &&
+                            addon.manifest.id.startsWith("fyi.kiko.pstremio.")
+                    )
+                    .map((addon) =>
+                        addon.manifest.id.slice("fyi.kiko.pstremio.".length)
+                    );
+
+                await Promise.all(
+                    sources.map(async (source) => {
+                        if (existing.includes(source)) return;
+                        const manifestURL = `${location.href}${source}/manifest.json`;
+                        const manifest = await fetch(manifestURL).then((resp) =>
+                            resp.json()
+                        );
+                        addons.push({
+                            flags: {
+                                official: false,
+                                protected: false
+                            },
+                            manifest,
+                            transportName: "",
+                            transportUrl: manifestURL
+                        });
+                    })
+                );
+
+                await request("addonCollectionSet", {
+                    authKey,
+                    addons
+                });
+
+                await request("logout", { authKey });
+
+                alert("done syncing addons.");
+            };
+        </script>
+    </body>
+</html>

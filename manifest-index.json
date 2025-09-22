@@ -1,0 +1,15 @@
+{
+    "id": "fyi.kiko.pstremio",
+    "name": "P-Stream",
+    "description": "Watch media from P-Stream on Stremio.",
+    "version": "0.0.1",
+    "idPrefixes": ["tt", "tmdb:"],
+    "resources": ["stream"],
+    "types": ["movie", "series"],
+    "catalogs": [],
+    "behaviorHints": {
+        "configurable": true,
+        "configurationRequired": true
+    },
+    "config": []
+}

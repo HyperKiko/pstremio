@@ -1,0 +1,13 @@
+{
+    "$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
+    "name": "pstremio",
+    "main": "src/index.ts",
+    "compatibility_date": "2025-09-20",
+    "assets": {
+        "binding": "ASSETS",
+        "directory": "./public"
+    },
+    "observability": {
+        "enabled": true
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "pstremio",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "hono": "^4.9.8"
+  },
+  "devDependencies": {
+    "@p-stream/providers": "github:p-stream/providers#production",
+    "wrangler": "^4.38.0"
+  }
+}
