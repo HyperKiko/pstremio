@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      hls-parser:
+        specifier: ^0.14.0
+        version: 0.14.0
       hono:
         specifier: ^4.9.8
         version: 4.9.8
@@ -549,6 +552,9 @@ packages:
 
   hls-parser@0.13.6:
     resolution: {integrity: sha512-I40sl22E2muqeSTpG8kMN2dAegAhubkXPXtnsUXFwdKwZK47d1Q+XwuX32VMZ++AZU5oeQIZqAnGNHxSG1sWaw==}
+
+  hls-parser@0.14.0:
+    resolution: {integrity: sha512-rI/X+lP7Rj6CtuglRNmC74QHaJA/3bw9cb0/rIUCv6iGErVQmY4rHpCRYMSpOGY2Q12TzUWUcWijuU4qjtv3+w==}
 
   hono@4.9.8:
     resolution: {integrity: sha512-JW8Bb4RFWD9iOKxg5PbUarBYGM99IcxFl2FPBo2gSJO11jjUDqlP1Bmfyqt8Z/dGhIQ63PMA9LdcLefXyIasyg==}
@@ -1148,6 +1154,8 @@ snapshots:
       function-bind: 1.1.2
 
   hls-parser@0.13.6: {}
+
+  hls-parser@0.14.0: {}
 
   hono@4.9.8: {}
 

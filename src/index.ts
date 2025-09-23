@@ -16,6 +16,7 @@ import type {
     Qualities,
     Stream
 } from "@p-stream/providers";
+import HLSParser from "hls-parser";
 
 const HEADER_OVERRIDES = {
     Origin: "https://pstream.mov",
@@ -95,12 +96,40 @@ declare type StreamCommon = {
     preferredHeaders?: Record<string, string>;
 };
 
+const getQuality = (res: HLSParser.types.Resolution): Qualities => {
+    const map = {
+        360: "360",
+        480: "480",
+        720: "720",
+        1080: "1080",
+        2160: "4k"
+    } as const;
+
+    const targetHeights = Object.keys(map).map(Number);
+    const closest = targetHeights.reduce((a, b) =>
+        Math.abs(res.height - a) < Math.abs(res.height - b) ? a : b
+    );
+
+    if (Math.abs(res.height - closest) > 100) return "unknown";
+    return map[closest as keyof typeof map];
+};
+
 const convertCommon = (
     stream: StreamCommon,
-    { quality, embedMeta }: { quality?: Qualities; embedMeta?: MetaOutput }
+    {
+        quality,
+        embedMeta,
+        variant
+    }: {
+        quality?: Qualities;
+        embedMeta?: MetaOutput;
+        variant?: HLSParser.types.Variant;
+    }
 ) => ({
     description: `${embedMeta ? `${embedMeta.name} - ` : ""}${stream.id}${
-        quality ? ` (${quality})` : ""
+        quality || variant?.resolution
+            ? ` (${quality || getQuality(variant?.resolution!)})`
+            : ""
     }`,
     subtitles: stream.captions.map((caption) => ({
         id: caption.id,
@@ -113,32 +142,52 @@ const convertCommon = (
             (stream.headers && Object.keys(stream.headers).length),
         bingeGroup: `pstremio-${embedMeta?.id}-${stream.id}-${quality}`,
         proxyHeaders: {
-            ...HEADER_OVERRIDES,
-            ...stream.headers,
-            ...stream.preferredHeaders
+            request: {
+                ...HEADER_OVERRIDES,
+                ...stream.headers,
+                ...stream.preferredHeaders
+            }
         }
     }
 });
 
 const convertStreams = (stream: Stream[], embedMeta?: MetaOutput) =>
-    stream
-        .map((stream) =>
-            stream.flags.includes("ip-locked")
-                ? []
-                : stream.type === "file"
-                ? Object.entries(stream.qualities).map(([quality, file]) => ({
-                      ...convertCommon(stream, {
-                          quality: quality as Qualities,
-                          embedMeta
-                      }),
-                      url: file.url
-                  }))
-                : {
-                      ...convertCommon(stream, { embedMeta }),
-                      url: stream.playlist
-                  }
-        )
-        .flat();
+    Promise.all(
+        stream.map(async (stream) => {
+            if (stream.flags.includes("ip-locked")) return [];
+            if (stream.type === "file")
+                return Object.entries(stream.qualities).map(
+                    ([quality, file]) => ({
+                        ...convertCommon(stream, {
+                            quality: quality as Qualities,
+                            embedMeta
+                        }),
+                        url: file.url
+                    })
+                );
+
+            const playlist = HLSParser.parse(
+                await fetch(stream.playlist, {
+                    headers: {
+                        ...HEADER_OVERRIDES,
+                        ...stream.headers,
+                        ...stream.preferredHeaders
+                    }
+                }).then((resp) => resp.text())
+            );
+
+            if (!playlist.isMasterPlaylist)
+                return {
+                    ...convertCommon(stream, { embedMeta }),
+                    url: stream.playlist
+                };
+
+            return playlist.variants.map((variant) => ({
+                ...convertCommon(stream, { embedMeta, variant }),
+                url: new URL(variant.uri, stream.playlist).href
+            }));
+        })
+    ).then((arr) => arr.flat());
 
 app.get("/:source/stream/:type{(movie|series)}/:id{(.+)\\.json}", async (c) => {
     const source = c.req.param("source");
@@ -158,7 +207,7 @@ app.get("/:source/stream/:type{(movie|series)}/:id{(.+)\\.json}", async (c) => {
 
     if (output.stream) {
         return c.json({
-            streams: convertStreams(output.stream)
+            streams: await convertStreams(output.stream)
         });
     }
 
@@ -176,7 +225,7 @@ app.get("/:source/stream/:type{(movie|series)}/:id{(.+)\\.json}", async (c) => {
                         if (!(e instanceof NotFoundError)) console.error(e);
                         return [];
                     }
-                    return convertStreams(
+                    return await convertStreams(
                         embedOutput.stream,
                         providers.getMetadata(embed.embedId)!
                     );
