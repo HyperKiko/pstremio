@@ -182,10 +182,16 @@ const convertStreams = (stream: Stream[], embedMeta?: MetaOutput) =>
                     url: stream.playlist
                 };
 
-            return playlist.variants.map((variant) => ({
-                ...convertCommon(stream, { embedMeta, variant }),
-                url: new URL(variant.uri, stream.playlist).href
-            }));
+            return playlist.variants
+                .map((variant) =>
+                    variant.isIFrameOnly
+                        ? []
+                        : {
+                              ...convertCommon(stream, { embedMeta, variant }),
+                              url: new URL(variant.uri, stream.playlist).href
+                          }
+                )
+                .flat();
         })
     ).then((arr) => arr.flat());
 
