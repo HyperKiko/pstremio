@@ -1,3 +1,4 @@
+import "./polyfill";
 // export {
 //     R as makeProviders,
 //     S as makeStandardFetcher,

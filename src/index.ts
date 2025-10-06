@@ -17,6 +17,7 @@ import type {
     Stream
 } from "@p-stream/providers";
 import HLSParser from "hls-parser";
+import { updateStorage } from "./polyfill";
 
 const HEADER_OVERRIDES = {
     Origin: "https://pstream.mov",
@@ -49,14 +50,14 @@ app.get("/api/sources", (c) => {
 });
 
 app.get("/:source/manifest.json", (c) => {
-    const source = c.req.param("source");
+    const source = c.req.param("source").split(",")[0];
     const sourceMetadata = providers.getMetadata(source);
     if (!sourceMetadata)
         return c.json(
             {
                 error: "Source not found."
             },
-            400
+            404
         );
 
     c.header("Content-Type", "application/json");
@@ -97,6 +98,8 @@ declare type StreamCommon = {
 };
 
 const getQuality = (res: HLSParser.types.Resolution): Qualities => {
+    const height =
+        res.width * 9 > res.height * 16 ? (res.width * 9) / 16 : res.height; // get16:9 height
     const map = {
         360: "360",
         480: "480",
@@ -107,10 +110,10 @@ const getQuality = (res: HLSParser.types.Resolution): Qualities => {
 
     const targetHeights = Object.keys(map).map(Number);
     const closest = targetHeights.reduce((a, b) =>
-        Math.abs(res.height - a) < Math.abs(res.height - b) ? a : b
+        Math.abs(height - a) < Math.abs(height - b) ? a : b
     );
 
-    if (Math.abs(res.height - closest) > 100) return "unknown";
+    if (Math.abs(height - closest) > 100) return "unknown";
     return map[closest as keyof typeof map];
 };
 
@@ -196,7 +199,19 @@ const convertStreams = (stream: Stream[], embedMeta?: MetaOutput) =>
     ).then((arr) => arr.flat());
 
 app.get("/:source/stream/:type{(movie|series)}/:id{(.+)\\.json}", async (c) => {
-    const source = c.req.param("source");
+    const source = c.req.param("source").split(",")[0];
+    updateStorage({
+        preferences: {
+            state: {
+                febboxKey: c.req.param("source").split(",")[1]
+            }
+        },
+        region: {
+            state: {
+                region: c.req.param("source").split(",")[2]
+            }
+        }
+    });
     const type = c.req.param("type");
     const id = c.req.param("id");
     const media = await getMediaInfo(type, id);

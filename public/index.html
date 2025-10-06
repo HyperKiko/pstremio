@@ -36,6 +36,31 @@
                 class="border-2 border-slate-600 rounded-xl h-12 p-2"
                 placeholder="Password"
             />
+            <span class="text-neutral-400 w-full justify-center flex text-2xl"
+                >OPTIONALLY</span
+            >
+            <input
+                type="password"
+                name="febbox_key"
+                id="febbox_key"
+                class="border-2 border-slate-600 rounded-xl h-12 p-2"
+                placeholder="Febbox token"
+            />
+            <select
+                id="region"
+                name="region"
+                class="border-2 border-slate-600 rounded-xl h-12 p-2 bg-slate-800"
+            >
+                <option value="dallas">Dallas, TX</option>
+                <option value="portland">Portland, OR</option>
+                <option value="new-york" selected>New York, NY</option>
+                <option value="paris">Paris, France</option>
+                <option value="hong-kong">Hong Kong</option>
+                <option value="kansas">Kansas City, MO</option>
+                <option value="sydney">Sydney, Australia</option>
+                <option value="singapore">Singapore</option>
+                <option value="mumbai">Mumbai, India</option>
+            </select>
             <button
                 class="bg-slate-900 h-12 p-2 border-2 border-slate-600 rounded-xl cursor-pointer"
                 id="button"
@@ -44,6 +69,7 @@
             </button>
         </div>
         <script type="module">
+            const NEEDS_FEBBOX_KEY = ["fedapi", "cia-api"];
             const sources = await fetch("/api/sources").then((resp) =>
                 resp.json()
             );
@@ -67,11 +93,17 @@
             const email_input = document.getElementById("email");
             /** @type HTMLInputElement */
             const password_input = document.getElementById("password");
+            /** @type HTMLInputElement */
+            const febbox_key_input = document.getElementById("febbox_key");
+            /** @type HTMLSelectElement */
+            const region_input = document.getElementById("region");
             /** @type HTMLButtonElement */
             const button = document.getElementById("button");
             button.onclick = async (e) => {
                 const email = email_input.value;
                 const password = password_input.value;
+                const febboxKey = febbox_key_input.value;
+                const region = region_input.value;
                 if (!email || !password)
                     return alert("enter login credentials");
 
@@ -105,7 +137,17 @@
                 await Promise.all(
                     sources.map(async (source) => {
                         if (existing.includes(source)) return;
-                        const manifestURL = `${location.href}${source}/manifest.json`;
+                        if (NEEDS_FEBBOX_KEY.includes(source) && !febboxKey)
+                            return console.warn(
+                                `skipping ${source} because it needs a febbox key`
+                            );
+
+                        const manifestURL = `${location.href}${[
+                            source,
+                            ...(NEEDS_FEBBOX_KEY.includes(source)
+                                ? [febboxKey, region || "new-york"]
+                                : [])
+                        ].join(",")}/manifest.json`;
                         const manifest = await fetch(manifestURL).then((resp) =>
                             resp.json()
                         );
