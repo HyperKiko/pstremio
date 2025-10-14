@@ -33,5 +33,6 @@ lerna-debug.log*
 .DS_Store
 
 # shhhhh
-xprime.wasm*
-vendor.js*
+src/*.wasm*
+src/*.js*
+!src/providers.js

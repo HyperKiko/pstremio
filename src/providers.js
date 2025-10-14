@@ -1,9 +1,9 @@
 import "./polyfill";
 // export {
-//     R as makeProviders,
-//     S as makeStandardFetcher,
-//     U as targets,
-//     N as NotFoundError
+//     aJ as makeProviders,
+//     aK as makeStandardFetcher,
+//     aL as targets,
+//     ax as NotFoundError
 // } from "./vendor"; // shhhhh
 export {
     makeProviders,
